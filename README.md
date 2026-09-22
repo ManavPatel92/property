@@ -1,13 +1,27 @@
-# Executive Lets Ltd — Vercel website
+# Executive Lets Ltd — Vercel edition
 
-Six-page informational property website built with Next.js 16, React 19, TypeScript and Tailwind CSS 4.
+The estate agency website, public property listings and a private management area, using Next.js 16, React 19, TypeScript and Tailwind CSS 4.
 
-## Deploy
+## Run locally
 
-Import this repository into Vercel as a Next.js project with the root directory set to the repository root. Use Node.js 22.x, `npm install` for installation, and `npm run build` for the build. These commands are configured in `vercel.json`. This repository intentionally does not have an outdated `pnpm-lock.yaml`; npm generates `package-lock.json` when an install runs locally. Commit that generated lockfile when you can.
+Requires Node.js 22. Run `npm install`, then `npm run dev`. Open http://localhost:3000.
 
-The images in `public/` are optimised WebP versions of the source images for GitHub transfer. The original high-resolution PNGs remain in the source ZIP provided in the chat.
+## Deploy to Vercel
 
-The site is currently informational only: property listings, administration login, property editing, and enquiry submissions are **not implemented**. Contact details await confirmation.
+Import this folder as a new Vercel project (via Git), select the Next.js framework preset, and use the included `next build` command. This GitHub repository uses npm and should not include `pnpm-lock.yaml`. You can also use the Vercel CLI (`vercel` then `vercel --prod`) once signed into the correct account. Add `executiveltd.co.uk` and `www.executiveltd.co.uk` to this project under Settings → Domains, then follow the DNS instructions Vercel gives for your account. The domain owner must update DNS.
 
-If Vercel still attempts `scripts/run-framework.mjs`, remove the stale build-command override in Vercel Project Settings and use `npm run build`. Check Root Directory is the repository root.
+The contact page awaits the client's real phone and email details. The management area adds live property listings after database setup.
+
+## Property management setup
+
+1. Create a Supabase project. In its SQL editor, run `database/schema.sql`. The tables have row level security and no browser access policies.
+2. Copy `.env.example` to `.env.local`; replace `SUPABASE_URL` and `SUPABASE_SECRET_KEY` with your project URL and **server-only secret key**. Do not use a publishable key.
+3. Run `npm run create-admin` in your own terminal. Type the username and password securely when prompted. This adds `ADMIN_USERNAME_DIGEST`, `ADMIN_PASSWORD_HASH`, `AUTH_PEPPER`, and `DATA_ENCRYPTION_KEY` to `.env.local`. Never send the plain password in chat or commit `.env.local`.
+4. In Vercel → Project → Settings → Environment Variables, add those six values from `.env.local` to Production (and Preview if needed), then redeploy. Keep the encryption key unchanged or existing property records cannot be decrypted.
+5. The private management URL is `/admin/login`. It is intentionally absent from public navigation. Open `/admin/login` to sign in and `/admin` to add, edit, remove and change status. Public listings appear on `/properties` after publishing them. Draft and Off market listings are hidden publicly.
+
+Passwords are salted and one-way hashed with scrypt. Usernames are stored only as keyed one-way digests, not reversible text. Property details, including private notes, are encrypted with AES-256-GCM before storage. Sessions use random HttpOnly cookies and server-side hashed tokens, expiring after 12 hours. Never add a secret key or `.env.local` to Git. Public listing details are intentionally decrypted on the server to display to visitors; owner notes and private addresses are not rendered publicly. Cover photos currently accept HTTPS image URLs; an image upload service can be added later.
+
+## If Vercel says scripts/run-framework.mjs is missing
+
+That build is using the earlier general-source package. Redeploy this Vercel edition, or open the existing Vercel project → Settings → Build and Deployment → Build Command, switch Override on and enter `next build`. Keep Framework Preset `Next.js`. The `vercel.json` in this package also sets the build command explicitly.
