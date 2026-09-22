@@ -18,7 +18,7 @@ export function Header() {
 }
 
 export function Footer() {
-  return <footer className="site-footer"><div className="footer-main"><div><Logo /><p>Property services for landlords, tenants, buyers and sellers.</p></div><div><h3>Services</h3><a href="/lettings">Lettings</a><a href="/sales">Sales</a><a href="/property-management">Property management</a></div><div><h3>Explore</h3><a href="/about">About</a><a href="/contact">Contact</a></div></div><div className="footer-bottom"><span>© {new Date().getFullYear()} Executive Lets Ltd</span><span>Property information is subject to confirmation.</span></div></footer>;
+  return <footer className="site-footer"><div className="footer-main"><div><Logo /><p>Property services for landlords, tenants, buyers and sellers.</p></div><div><h3>Services</h3><a href="/lettings">Lettings</a><a href="/sales">Sales</a><a href="/property-management">Property management</a></div><div><h3>Explore</h3><a href="/properties">Properties</a><a href="/about">About</a><a href="/contact">Contact</a></div></div><div className="footer-bottom"><span>© {new Date().getFullYear()} Executive Lets Ltd</span><span>Property information is subject to confirmation.</span></div></footer>;
 }
 
 export function PageShell({ children }: { children: React.ReactNode }) { return <><Header /><main>{children}</main><Footer /></>; }
