@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "../vendor/shadcn-tailwind-4.13.0.css";
 
 /* Property listings and the private management workspace. */
 .listings-intro { padding:clamp(4rem,8vw,7rem) 6vw 3rem; background:var(--cream); }
