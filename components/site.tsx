@@ -3,18 +3,12 @@ import { nav } from "@/lib/site-data";
 
 export function Logo() {
   return <a className="logo" href="/" aria-label="Executive Lets Ltd home">
-    <svg className="logo-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-      <rect width="64" height="64" rx="5" fill="#0c2630" />
-      <rect x="5.5" y="5.5" width="53" height="53" rx="2" fill="none" stroke="#c68252" strokeWidth="1" />
-      <path d="M30 16H15v32h15M15 32h13" fill="none" stroke="#f7f4ed" strokeWidth="3.3" strokeLinecap="square" strokeLinejoin="miter" />
-      <path d="M37 16v32h13" fill="none" stroke="#c68252" strokeWidth="3.3" strokeLinecap="square" strokeLinejoin="miter" />
-    </svg>
-    <span className="logo-wordmark"><span>Executive</span><small>LETS LTD</small></span>
+    <span className="customer-logo-viewport" aria-hidden="true"><img className="customer-logo" src="/executive-lets-logo.png" alt="" /></span>
   </a>;
 }
 
 export function Header() {
-  return <header className="site-header"><div className="header-inner"><Logo /><nav className="desktop-nav" aria-label="Primary navigation">{nav.map(([label, href]) => <a href={href} key={href}>{label}</a>)}</nav><a className="header-cta" href="/contact">Contact <ArrowRight /></a><details className="mobile-menu"><summary aria-label="Open menu"><Menu /></summary><nav>{nav.map(([label, href]) => <a href={href} key={href}>{label}</a>)}</nav></details></div></header>;
+  return <header className="site-header"><div className="header-inner"><Logo /><nav className="desktop-nav" aria-label="Primary navigation">{nav.map(([label, href]) => <a href={href} key={href}>{label}</a>)}</nav><a className="header-cta" href="/contact">Contact <ArrowRight /></a><details className="mobile-menu"><summary aria-label="Open menu"><Menu /></summary><nav aria-label="Mobile navigation">{nav.map(([label, href]) => <a href={href} key={href}>{label}</a>)}</nav></details></div></header>;
 }
 
 export function Footer() {
