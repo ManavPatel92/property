@@ -3,7 +3,7 @@ import { nav } from "@/lib/site-data";
 
 export function Logo() {
   return <a className="logo" href="/" aria-label="Executive Lets Ltd home">
-    <span className="customer-logo-viewport" aria-hidden="true"><img className="customer-logo" src="/executive-lets-logo.png" alt="" /></span>
+    <span className="customer-logo-viewport" aria-hidden="true"><img className="customer-logo" src="/Executive_Lets_Logo.png" alt="" /></span>
   </a>;
 }
 
