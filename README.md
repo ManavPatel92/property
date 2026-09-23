@@ -4,11 +4,11 @@ The estate agency website, public property listings and a private management are
 
 ## Run locally
 
-Requires Node.js 22. Run `npm install`, then `npm run dev`. Open http://localhost:3000.
+Requires Node.js 24. Run `npm install`, then `npm run dev`. Open http://localhost:3000.
 
 ## Deploy to Vercel
 
-Import this folder as a new Vercel project (via Git), select the Next.js framework preset, and use the included `next build` command. This GitHub repository uses npm and should not include `pnpm-lock.yaml`. You can also use the Vercel CLI (`vercel` then `vercel --prod`) once signed into the correct account. Add `executiveltd.co.uk` and `www.executiveltd.co.uk` to this project under Settings → Domains, then follow the DNS instructions Vercel gives for your account. The domain owner must update DNS.
+Import this folder as a new Vercel project (via Git), select the Next.js framework preset, use Node.js 24.x and use the included `next build` command. This GitHub project uses npm and should not contain `pnpm-lock.yaml`. You can also use the Vercel CLI (`vercel` then `vercel --prod`) once signed into the correct account. Add `executiveltd.co.uk` and `www.executiveltd.co.uk` to this project under Settings → Domains, then follow the DNS instructions Vercel gives for your account. The domain owner must update DNS.
 
 The contact page awaits the client's real phone and email details. The management area adds live property listings after database setup.
 
@@ -18,7 +18,7 @@ The contact page awaits the client's real phone and email details. The managemen
 2. Copy `.env.example` to `.env.local`; replace `SUPABASE_URL` and `SUPABASE_SECRET_KEY` with your project URL and **server-only secret key**. Do not use a publishable key.
 3. Run `npm run create-admin` in your own terminal. Type the username and password securely when prompted. This adds `ADMIN_USERNAME_DIGEST`, `ADMIN_PASSWORD_HASH`, `AUTH_PEPPER`, and `DATA_ENCRYPTION_KEY` to `.env.local`. Never send the plain password in chat or commit `.env.local`.
 4. In Vercel → Project → Settings → Environment Variables, add those six values from `.env.local` to Production (and Preview if needed), then redeploy. Keep the encryption key unchanged or existing property records cannot be decrypted.
-5. The private management URL is `/admin/login`. It is intentionally absent from public navigation. Open `/admin/login` to sign in and `/admin` to add, edit, remove and change status. Public listings appear on `/properties` after publishing them. Draft and Off market listings are hidden publicly.
+5. The private management URL is `/admin/login`. It is intentionally absent from public navigation. Sign in there to add, edit, remove and change status. Public listings appear on `/properties` after publishing them. Draft and Off market listings are hidden publicly.
 
 Passwords are salted and one-way hashed with scrypt. Usernames are stored only as keyed one-way digests, not reversible text. Property details, including private notes, are encrypted with AES-256-GCM before storage. Sessions use random HttpOnly cookies and server-side hashed tokens, expiring after 12 hours. Never add a secret key or `.env.local` to Git. Public listing details are intentionally decrypted on the server to display to visitors; owner notes and private addresses are not rendered publicly. Cover photos currently accept HTTPS image URLs; an image upload service can be added later.
 
