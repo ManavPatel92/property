@@ -1,10 +1,8 @@
+import { randomBytes } from "node:crypto";
 import { decrypt, encrypt } from "@/lib/secure";
 
-export type Status = "draft" | "available" | "under_offer" | "let_agreed" | "sold" | "off_market";
-export const statuses: Status[] = ["draft", "available", "under_offer", "let_agreed", "sold", "off_market"];
-export const statusNames: Record<Status, string> = { draft: "Draft", available: "Available", under_offer: "Under offer", let_agreed: "Let agreed", sold: "Sold", off_market: "Off market" };
-export type PropertyDetails = { title: string; location: string; address: string; kind: "sale" | "letting"; price: string; bedrooms: number; bathrooms: number; description: string; imageUrl: string; features: string[]; ownerNotes: string };
-export type Property = PropertyDetails & { id: string; status: Status; createdAt: string; updatedAt: string };
+export * from "@/lib/types";
+import { type Property, type PropertyDetails, type Status } from "@/lib/types";
 type Row = { id: string; status: Status; payload: string; created_at: string; updated_at: string };
 
 export async function db<T>(table: "properties" | "admin_sessions" | "login_attempts", query: string, init: { method?: string; body?: unknown; returnRows?: boolean } = {}): Promise<T> {
@@ -45,4 +43,65 @@ export async function updateStatus(id: string, status: Status) {
 }
 export async function removeProperty(id: string) {
   await db("properties", `id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+let bucketChecked = false;
+async function ensureStorageBucket(origin: string, secret: string) {
+  if (bucketChecked) return;
+  try {
+    await fetch(`${origin}/storage/v1/bucket`, {
+      method: "POST",
+      headers: {
+        apikey: secret,
+        Authorization: `Bearer ${secret}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id: "property-images", name: "property-images", public: true }),
+    });
+    bucketChecked = true;
+  } catch {
+    bucketChecked = true;
+  }
+}
+
+export async function uploadPropertyImage(file: File): Promise<string> {
+  const origin = process.env.SUPABASE_URL;
+  const secret = process.env.SUPABASE_SECRET_KEY;
+  if (!origin || !secret) throw new Error("Property database is not configured");
+  const url = new URL(origin);
+  if (url.protocol !== "https:" || !url.hostname.endsWith(".supabase.co")) throw new Error("Invalid Supabase URL");
+
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"];
+  if (file.type && !allowedTypes.includes(file.type)) {
+    throw new Error("Invalid image format. Please upload JPG, PNG, WEBP, or AVIF.");
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error("Image file is too large. Maximum size is 10MB.");
+  }
+
+  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const safeExt = /^[a-z0-9]+$/i.test(ext) ? ext : "jpg";
+  const fileName = `${Date.now()}-${randomBytes(8).toString("hex")}.${safeExt}`;
+  const arrayBuffer = await file.arrayBuffer();
+
+  await ensureStorageBucket(url.origin, secret);
+
+  const response = await fetch(`${url.origin}/storage/v1/object/property-images/${fileName}`, {
+    method: "POST",
+    headers: {
+      apikey: secret,
+      Authorization: `Bearer ${secret}`,
+      "Content-Type": file.type || "application/octet-stream",
+      "x-upsert": "true",
+    },
+    body: Buffer.from(arrayBuffer),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Failed to upload image (${response.status}): ${errText}`);
+  }
+
+  return `${url.origin}/storage/v1/object/public/property-images/${fileName}`;
 }
