@@ -35,21 +35,23 @@ export async function getProperty(id: string) {
 export async function createProperty(details: PropertyDetails, status: Status) {
   await db("properties", "", { method: "POST", body: { status, payload: encrypt(details) } });
 }
-export async function updateProperty(id: string, details: PropertyDetails, status: Status) {
+export async function updateProperty(id: string, details: PropertyDetails, status: Status, previousImageUrl = "") {
   await db("properties", `id=eq.${encodeURIComponent(id)}`, { method: "PATCH", body: { status, payload: encrypt(details), updated_at: new Date().toISOString() } });
+  if (previousImageUrl && previousImageUrl !== details.imageUrl) await removeStorageObject(previousImageUrl);
 }
 export async function updateStatus(id: string, status: Status) {
   await db("properties", `id=eq.${encodeURIComponent(id)}`, { method: "PATCH", body: { status, updated_at: new Date().toISOString() } });
 }
-export async function removeProperty(id: string) {
+export async function removeProperty(id: string, imageUrl = "") {
   await db("properties", `id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
+  if (imageUrl) await removeStorageObject(imageUrl);
 }
 
 let bucketChecked = false;
 async function ensureStorageBucket(origin: string, secret: string) {
   if (bucketChecked) return;
   try {
-    await fetch(`${origin}/storage/v1/bucket`, {
+    const response = await fetch(`${origin}/storage/v1/bucket`, {
       method: "POST",
       headers: {
         apikey: secret,
@@ -58,9 +60,8 @@ async function ensureStorageBucket(origin: string, secret: string) {
       },
       body: JSON.stringify({ id: "property-images", name: "property-images", public: true }),
     });
-    bucketChecked = true;
+    if (response.ok || response.status === 409) bucketChecked = true;
   } catch {
-    bucketChecked = true;
   }
 }
 
@@ -72,8 +73,8 @@ export async function uploadPropertyImage(file: File): Promise<string> {
   if (url.protocol !== "https:" || !url.hostname.endsWith(".supabase.co")) throw new Error("Invalid Supabase URL");
 
   const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"];
-  if (file.type && !allowedTypes.includes(file.type)) {
-    throw new Error("Invalid image format. Please upload JPG, PNG, WEBP, or AVIF.");
+  if (!allowedTypes.includes(file.type)) {
+    throw new Error("Invalid image format. Please upload JPG, PNG, WEBP, AVIF, or GIF.");
   }
   if (file.size > 10 * 1024 * 1024) {
     throw new Error("Image file is too large. Maximum size is 10MB.");
@@ -91,7 +92,7 @@ export async function uploadPropertyImage(file: File): Promise<string> {
     headers: {
       apikey: secret,
       Authorization: `Bearer ${secret}`,
-      "Content-Type": file.type || "application/octet-stream",
+      "Content-Type": file.type,
       "x-upsert": "true",
     },
     body: Buffer.from(arrayBuffer),
@@ -104,4 +105,26 @@ export async function uploadPropertyImage(file: File): Promise<string> {
   }
 
   return `${url.origin}/storage/v1/object/public/property-images/${fileName}`;
+}
+
+async function removeStorageObject(imageUrl: string) {
+  const origin = process.env.SUPABASE_URL;
+  const secret = process.env.SUPABASE_SECRET_KEY;
+  if (!origin || !secret || !imageUrl) return;
+
+  try {
+    const url = new URL(imageUrl);
+    const prefix = "/storage/v1/object/public/property-images/";
+    if (url.origin !== new URL(origin).origin || !url.pathname.startsWith(prefix)) return;
+    const path = url.pathname.slice(prefix.length);
+    if (!path || path.includes("..")) return;
+    const response = await fetch(`${new URL(origin).origin}/storage/v1/object/property-images/${path}`, {
+      method: "DELETE",
+      headers: { apikey: secret, Authorization: `Bearer ${secret}` },
+      cache: "no-store",
+    });
+    if (!response.ok && response.status !== 404) throw new Error(`Storage cleanup failed (${response.status})`);
+  } catch (error) {
+    console.error("Storage cleanup error:", error);
+  }
 }
