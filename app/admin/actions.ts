@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createSession, endSession, allowLogin, recordFailure, requireAdmin } from "@/lib/admin-auth";
 import { isConfigured, verifyLogin } from "@/lib/secure";
-import { createProperty, getProperty, removeProperty, statuses, updateProperty, updateStatus, type PropertyDetails, type Status } from "@/lib/storage";
+import { createProperty, getProperty, removeProperty, statuses, updateProperty, updateStatus, uploadPropertyImage, type PropertyDetails, type Status } from "@/lib/storage";
 
 export async function loginAction(form: FormData) {
   if (!isConfigured()) redirect("/admin/login?error=setup");
@@ -18,7 +18,7 @@ export async function loginAction(form: FormData) {
 
 export async function logoutAction() { await requireAdmin(); await endSession(); redirect("/admin/login"); }
 
-function readProperty(form: FormData): { details: PropertyDetails; status: Status } {
+async function readProperty(form: FormData): Promise<{ details: PropertyDetails; status: Status }> {
   const value = (name: string, limit = 300) => String(form.get(name) || "").trim().slice(0, limit);
   const title = value("title", 150);
   const location = value("location", 150);
@@ -31,7 +31,11 @@ function readProperty(form: FormData): { details: PropertyDetails; status: Statu
   const bedrooms = Number(value("bedrooms"));
   const bathrooms = Number(value("bathrooms"));
   if (![bedrooms, bathrooms].every(n => Number.isInteger(n) && n >= 0 && n <= 50)) throw new Error("Invalid bedroom or bathroom count.");
-  const imageUrl = value("imageUrl", 1000);
+  let imageUrl = value("imageUrl", 1000);
+  const imageFile = form.get("imageFile");
+  if (imageFile && typeof imageFile === "object" && "size" in imageFile && (imageFile as File).size > 0) {
+    imageUrl = await uploadPropertyImage(imageFile as File);
+  }
   if (imageUrl && (!/^https:\/\//i.test(imageUrl) || (() => { try { const url = new URL(imageUrl); return !["https:"].includes(url.protocol) || Boolean(url.username || url.password); } catch { return true; } })())) throw new Error("Use an HTTPS image URL.");
   return { status, details: { title, location, price, description, kind, bedrooms, bathrooms, imageUrl, address: value("address", 250), ownerNotes: value("ownerNotes", 2000), features: value("features", 1200).split("\n").map(x => x.trim()).filter(Boolean).slice(0, 25) } };
 }
@@ -39,7 +43,10 @@ function readProperty(form: FormData): { details: PropertyDetails; status: Statu
 export async function savePropertyAction(form: FormData) {
   await requireAdmin();
   let property;
-  try { property = readProperty(form); } catch { redirect("/admin?error=fields"); }
+  try { property = await readProperty(form); } catch (err) {
+    console.error("Save property error:", err);
+    redirect("/admin?error=fields");
+  }
   const id = String(form.get("id") || "");
   if (id) {
     if (!(await getProperty(id))) redirect("/admin?error=missing");
