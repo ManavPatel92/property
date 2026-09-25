@@ -49,8 +49,9 @@ export async function savePropertyAction(form: FormData) {
   }
   const id = String(form.get("id") || "");
   if (id) {
-    if (!(await getProperty(id))) redirect("/admin?error=missing");
-    await updateProperty(id, property.details, property.status);
+    const existing = await getProperty(id);
+    if (!existing) redirect("/admin?error=missing");
+    await updateProperty(id, property.details, property.status, existing.imageUrl);
   } else await createProperty(property.details, property.status);
   redirect("/admin?updated=1");
 }
@@ -67,7 +68,8 @@ export async function changeStatusAction(form: FormData) {
 export async function deletePropertyAction(form: FormData) {
   await requireAdmin();
   const id = String(form.get("id") || "");
-  if (!(await getProperty(id))) redirect("/admin?error=missing");
-  await removeProperty(id);
+  const property = await getProperty(id);
+  if (!property) redirect("/admin?error=missing");
+  await removeProperty(id, property.imageUrl);
   redirect("/admin?removed=1");
 }

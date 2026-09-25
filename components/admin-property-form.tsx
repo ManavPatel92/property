@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { savePropertyAction } from "@/app/admin/actions";
 import { statuses, statusNames, type Property } from "@/lib/types";
 
@@ -8,6 +8,7 @@ export function AdminPropertyForm({ property }: { property?: Property }) {
   const [preview, setPreview] = useState<string | null>(property?.imageUrl || null);
   const [currentUrl, setCurrentUrl] = useState<string>(property?.imageUrl || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [fileError, setFileError] = useState<string | null>(null);
 
@@ -20,8 +21,17 @@ export function AdminPropertyForm({ property }: { property?: Property }) {
         e.target.value = "";
         return;
       }
+      if (!["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"].includes(file.type)) {
+        setFileError("Please choose a JPG, PNG, WEBP, AVIF, or GIF image.");
+        e.target.value = "";
+        return;
+      }
+      setCurrentUrl("");
       const objectUrl = URL.createObjectURL(file);
       setPreview(objectUrl);
+    } else {
+      setCurrentUrl(property?.imageUrl || "");
+      setPreview(property?.imageUrl || null);
     }
   };
 
@@ -99,7 +109,8 @@ export function AdminPropertyForm({ property }: { property?: Property }) {
           <input
             type="file"
             name="imageFile"
-            accept="image/jpeg,image/png,image/webp,image/avif"
+            ref={fileInputRef}
+            accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
             onChange={handleFileChange}
           />
         </label>
@@ -136,8 +147,9 @@ export function AdminPropertyForm({ property }: { property?: Property }) {
             placeholder="https://..."
             defaultValue={property?.imageUrl}
             onChange={(e) => {
+              if (e.target.value) fileInputRef.current!.value = "";
               setCurrentUrl(e.target.value);
-              if (e.target.value) setPreview(e.target.value);
+              setPreview(e.target.value || null);
             }}
             style={{ marginTop: "0.4rem" }}
           />
