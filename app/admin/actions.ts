@@ -51,7 +51,12 @@ export async function savePropertyAction(form: FormData) {
   if (id) {
     const existing = await getProperty(id);
     if (!existing) redirect("/admin?error=missing");
-    await updateProperty(id, property.details, property.status, existing.imageUrl);
+    try {
+      await updateProperty(id, property.details, property.status, existing.updatedAt, existing.imageUrl);
+    } catch (err) {
+      console.error("Update property error:", err);
+      redirect("/admin?error=conflict");
+    }
   } else await createProperty(property.details, property.status);
   redirect("/admin?updated=1");
 }
@@ -70,6 +75,11 @@ export async function deletePropertyAction(form: FormData) {
   const id = String(form.get("id") || "");
   const property = await getProperty(id);
   if (!property) redirect("/admin?error=missing");
-  await removeProperty(id, property.imageUrl);
+  try {
+    await removeProperty(id, property.imageUrl, property.updatedAt);
+  } catch (err) {
+    console.error("Delete property error:", err);
+    redirect("/admin?error=conflict");
+  }
   redirect("/admin?removed=1");
 }
