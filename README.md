@@ -6,6 +6,8 @@ The estate agency website, public property listings and a private management are
 
 Requires Node.js 24. Run `npm install`, then `npm run dev`. Open http://localhost:3000.
 
+For the complete local, Supabase, SMTP, admin, image upload, and Vercel setup instructions, see [SETUP.md](SETUP.md).
+
 ## Deploy to Vercel
 
 Import this folder as a new Vercel project (via Git), select the Next.js framework preset, use Node.js 24.x and use the included `next build` command. This GitHub project uses npm and should not contain `pnpm-lock.yaml`. You can also use the Vercel CLI (`vercel` then `vercel --prod`) once signed into the correct account. Add `executiveltd.co.uk` and `www.executiveltd.co.uk` to this project under Settings → Domains, then follow the DNS instructions Vercel gives for your account. The domain owner must update DNS.

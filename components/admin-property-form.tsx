@@ -1,37 +1,55 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { savePropertyAction } from "@/app/admin/actions";
 import { statuses, statusNames, type Property } from "@/lib/types";
+
+const MAX_IMAGE_SIZE = 4 * 1024 * 1024;
 
 export function AdminPropertyForm({ property }: { property?: Property }) {
   const [preview, setPreview] = useState<string | null>(property?.imageUrl || null);
   const [currentUrl, setCurrentUrl] = useState<string>(property?.imageUrl || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewObjectUrlRef = useRef<string | null>(null);
 
   const [fileError, setFileError] = useState<string | null>(null);
+
+  const releasePreviewObjectUrl = () => {
+    if (previewObjectUrlRef.current) URL.revokeObjectURL(previewObjectUrlRef.current);
+    previewObjectUrlRef.current = null;
+  };
+
+  const restorePreview = () => {
+    releasePreviewObjectUrl();
+    setPreview(currentUrl || property?.imageUrl || null);
+  };
+
+  useEffect(() => () => releasePreviewObjectUrl(), []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFileError(null);
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        setFileError("File is larger than 10MB. Please choose an image under 10MB.");
+      if (file.size > MAX_IMAGE_SIZE) {
+        setFileError("File is larger than 4MB. Please choose an image under 4MB.");
         e.target.value = "";
+        restorePreview();
         return;
       }
       if (!["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"].includes(file.type)) {
         setFileError("Please choose a JPG, PNG, WEBP, AVIF, or GIF image.");
         e.target.value = "";
+        restorePreview();
         return;
       }
+      releasePreviewObjectUrl();
       setCurrentUrl("");
       const objectUrl = URL.createObjectURL(file);
+      previewObjectUrlRef.current = objectUrl;
       setPreview(objectUrl);
     } else {
-      setCurrentUrl(property?.imageUrl || "");
-      setPreview(property?.imageUrl || null);
+      restorePreview();
     }
   };
 
@@ -115,7 +133,7 @@ export function AdminPropertyForm({ property }: { property?: Property }) {
           />
         </label>
         <p style={{ margin: "0", fontSize: "0.82rem", color: "var(--muted)" }}>
-          Upload an image directly from your computer or phone (JPG, PNG, WEBP, up to 10MB).
+          Upload an image directly from your computer or phone (JPG, PNG, WEBP, up to 4MB).
         </p>
 
         {fileError && (
@@ -148,6 +166,7 @@ export function AdminPropertyForm({ property }: { property?: Property }) {
             defaultValue={property?.imageUrl}
             onChange={(e) => {
               if (e.target.value) fileInputRef.current!.value = "";
+              releasePreviewObjectUrl();
               setCurrentUrl(e.target.value);
               setPreview(e.target.value || null);
             }}

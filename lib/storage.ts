@@ -35,15 +35,20 @@ export async function getProperty(id: string) {
 export async function createProperty(details: PropertyDetails, status: Status) {
   await db("properties", "", { method: "POST", body: { status, payload: encrypt(details) } });
 }
-export async function updateProperty(id: string, details: PropertyDetails, status: Status, previousImageUrl = "") {
-  await db("properties", `id=eq.${encodeURIComponent(id)}`, { method: "PATCH", body: { status, payload: encrypt(details), updated_at: new Date().toISOString() } });
+export async function updateProperty(id: string, details: PropertyDetails, status: Status, expectedUpdatedAt: string, previousImageUrl = "") {
+  const updated = await db<Row[]>("properties", `id=eq.${encodeURIComponent(id)}&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}`, { method: "PATCH", body: { status, payload: encrypt(details), updated_at: new Date().toISOString() }, returnRows: true });
+  if (!updated.length) {
+    if (details.imageUrl && details.imageUrl !== previousImageUrl) await removeStorageObject(details.imageUrl);
+    throw new Error("Property was changed by another admin.");
+  }
   if (previousImageUrl && previousImageUrl !== details.imageUrl) await removeStorageObject(previousImageUrl);
 }
 export async function updateStatus(id: string, status: Status) {
   await db("properties", `id=eq.${encodeURIComponent(id)}`, { method: "PATCH", body: { status, updated_at: new Date().toISOString() } });
 }
-export async function removeProperty(id: string, imageUrl = "") {
-  await db("properties", `id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
+export async function removeProperty(id: string, imageUrl = "", expectedUpdatedAt: string) {
+  const updated = await db<Row[]>("properties", `id=eq.${encodeURIComponent(id)}&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}`, { method: "DELETE", returnRows: true });
+  if (!updated.length) throw new Error("Property was changed by another admin.");
   if (imageUrl) await removeStorageObject(imageUrl);
 }
 
@@ -76,14 +81,14 @@ export async function uploadPropertyImage(file: File): Promise<string> {
   if (!allowedTypes.includes(file.type)) {
     throw new Error("Invalid image format. Please upload JPG, PNG, WEBP, AVIF, or GIF.");
   }
-  if (file.size > 10 * 1024 * 1024) {
-    throw new Error("Image file is too large. Maximum size is 10MB.");
+  if (file.size > 4 * 1024 * 1024) {
+    throw new Error("Image file is too large. Maximum size is 4MB.");
   }
 
-  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-  const safeExt = /^[a-z0-9]+$/i.test(ext) ? ext : "jpg";
-  const fileName = `${Date.now()}-${randomBytes(8).toString("hex")}.${safeExt}`;
   const arrayBuffer = await file.arrayBuffer();
+  if (!hasValidImageSignature(new Uint8Array(arrayBuffer), file.type)) throw new Error("The uploaded file is not a valid image.");
+  const safeExt = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/avif": "avif", "image/gif": "gif" } as Record<string, string>)[file.type] || "jpg";
+  const fileName = `${Date.now()}-${randomBytes(8).toString("hex")}.${safeExt}`;
 
   await ensureStorageBucket(url.origin, secret);
 
@@ -107,24 +112,31 @@ export async function uploadPropertyImage(file: File): Promise<string> {
   return `${url.origin}/storage/v1/object/public/property-images/${fileName}`;
 }
 
+function hasValidImageSignature(bytes: Uint8Array, type: string) {
+  const startsWith = (...values: number[]) => values.every((value, index) => bytes[index] === value);
+  const asciiAt = (offset: number, value: string) => value.split("").every((character, index) => bytes[offset + index] === character.charCodeAt(0));
+  if (type === "image/jpeg") return startsWith(0xff, 0xd8, 0xff);
+  if (type === "image/png") return startsWith(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a);
+  if (type === "image/gif") return asciiAt(0, "GIF87a") || asciiAt(0, "GIF89a");
+  if (type === "image/webp") return asciiAt(0, "RIFF") && asciiAt(8, "WEBP");
+  if (type === "image/avif") return asciiAt(4, "ftyp") && (asciiAt(8, "avif") || asciiAt(8, "avis"));
+  return false;
+}
+
 async function removeStorageObject(imageUrl: string) {
   const origin = process.env.SUPABASE_URL;
   const secret = process.env.SUPABASE_SECRET_KEY;
   if (!origin || !secret || !imageUrl) return;
 
-  try {
-    const url = new URL(imageUrl);
-    const prefix = "/storage/v1/object/public/property-images/";
-    if (url.origin !== new URL(origin).origin || !url.pathname.startsWith(prefix)) return;
-    const path = url.pathname.slice(prefix.length);
-    if (!path || path.includes("..")) return;
-    const response = await fetch(`${new URL(origin).origin}/storage/v1/object/property-images/${path}`, {
-      method: "DELETE",
-      headers: { apikey: secret, Authorization: `Bearer ${secret}` },
-      cache: "no-store",
-    });
-    if (!response.ok && response.status !== 404) throw new Error(`Storage cleanup failed (${response.status})`);
-  } catch (error) {
-    console.error("Storage cleanup error:", error);
-  }
+  const url = new URL(imageUrl);
+  const prefix = "/storage/v1/object/public/property-images/";
+  if (url.origin !== new URL(origin).origin || !url.pathname.startsWith(prefix)) return;
+  const path = url.pathname.slice(prefix.length);
+  if (!path || path.includes("..")) return;
+  const response = await fetch(`${new URL(origin).origin}/storage/v1/object/property-images/${path}`, {
+    method: "DELETE",
+    headers: { apikey: secret, Authorization: `Bearer ${secret}` },
+    cache: "no-store",
+  });
+  if (!response.ok && response.status !== 404) throw new Error(`Storage cleanup failed (${response.status})`);
 }
