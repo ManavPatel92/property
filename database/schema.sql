@@ -30,3 +30,9 @@ grant select, insert, update, delete on public.properties, public.admin_sessions
 grant usage, select on sequence public.login_attempts_id_seq to service_role;
 -- No RLS policies: browser keys cannot read or change the tables.
 -- Only the server-side secret key accesses data after the app checks authentication.
+
+-- Storage bucket
+insert into storage.buckets (id, name, public)
+values ('property-images', 'property-images', true)
+on conflict (id) do update set public = true;
+

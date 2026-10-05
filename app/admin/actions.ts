@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createSession, endSession, allowLogin, recordFailure, requireAdmin } from "@/lib/admin-auth";
 import { isConfigured, verifyLogin } from "@/lib/secure";
-import { createProperty, getProperty, removeProperty, statuses, updateProperty, updateStatus, type PropertyDetails, type Status } from "@/lib/storage";
+import { createProperty, getProperty, removeProperty, statuses, updateProperty, updateStatus, uploadPropertyImage, type PropertyDetails, type Status } from "@/lib/storage";
 
 export async function loginAction(form: FormData) {
   if (!isConfigured()) redirect("/admin/login?error=setup");
@@ -18,8 +18,16 @@ export async function loginAction(form: FormData) {
 
 export async function logoutAction() { await requireAdmin(); await endSession(); redirect("/admin/login"); }
 
-function readProperty(form: FormData): { details: PropertyDetails; status: Status } {
+async function readProperty(form: FormData): Promise<{ details: PropertyDetails; status: Status }> {
   const value = (name: string, limit = 300) => String(form.get(name) || "").trim().slice(0, limit);
+  const isValidImageUrl = (imageUrl: string) => /^https:\/\//i.test(imageUrl) && (() => {
+    try {
+      const url = new URL(imageUrl);
+      return !url.username && !url.password;
+    } catch {
+      return false;
+    }
+  })();
   const title = value("title", 150);
   const location = value("location", 150);
   const price = value("price", 80);
@@ -31,19 +39,53 @@ function readProperty(form: FormData): { details: PropertyDetails; status: Statu
   const bedrooms = Number(value("bedrooms"));
   const bathrooms = Number(value("bathrooms"));
   if (![bedrooms, bathrooms].every(n => Number.isInteger(n) && n >= 0 && n <= 50)) throw new Error("Invalid bedroom or bathroom count.");
-  const imageUrl = value("imageUrl", 1000);
-  if (imageUrl && (!/^https:\/\//i.test(imageUrl) || (() => { try { const url = new URL(imageUrl); return !["https:"].includes(url.protocol) || Boolean(url.username || url.password); } catch { return true; } })())) throw new Error("Use an HTTPS image URL.");
-  return { status, details: { title, location, price, description, kind, bedrooms, bathrooms, imageUrl, address: value("address", 250), ownerNotes: value("ownerNotes", 2000), features: value("features", 1200).split("\n").map(x => x.trim()).filter(Boolean).slice(0, 25) } };
+  let imageUrl = value("imageUrl", 1000);
+  let imageUrls: string[] = [];
+  let floorplanUrls: string[] = [];
+  try {
+    const submittedImageUrls = JSON.parse(value("imageUrls", 20000));
+    if (Array.isArray(submittedImageUrls) && submittedImageUrls.every(url => typeof url === "string" && isValidImageUrl(url))) imageUrls = submittedImageUrls.slice(0, 20);
+  } catch {
+    throw new Error("Invalid property gallery.");
+  }
+  try {
+    const submittedFloorplans = JSON.parse(value("floorplanUrls", 20000));
+    if (Array.isArray(submittedFloorplans) && submittedFloorplans.every(url => typeof url === "string" && isValidImageUrl(url))) floorplanUrls = submittedFloorplans.slice(0, 10);
+  } catch {
+    throw new Error("Invalid floor plan gallery.");
+  }
+  const imageFile = form.get("imageFile");
+  if (imageFile && typeof imageFile === "object" && "size" in imageFile && (imageFile as File).size > 0) {
+    imageUrl = await uploadPropertyImage(imageFile as File);
+  }
+  const imageFiles = form.getAll("imageFiles").filter((file): file is File => file instanceof File && file.size > 0);
+  const floorplanFiles = form.getAll("floorplanFiles").filter((file): file is File => file instanceof File && file.size > 0);
+  if (new Set([imageUrl, ...imageUrls].filter(Boolean)).size + imageFiles.length > 20) throw new Error("A property can have up to 20 photos.");
+  if (floorplanUrls.length + floorplanFiles.length > 10) throw new Error("A property can have up to 10 floor plans.");
+  for (const file of imageFiles) imageUrls.push(await uploadPropertyImage(file));
+  for (const file of floorplanFiles) floorplanUrls.push(await uploadPropertyImage(file));
+  if (imageUrl && !isValidImageUrl(imageUrl)) throw new Error("Use an HTTPS image URL.");
+  imageUrls = Array.from(new Set([imageUrl, ...imageUrls].filter(Boolean))).slice(0, 20);
+  return { status, details: { title, location, price, description, kind, bedrooms, bathrooms, imageUrl: imageUrls[0] || "", imageUrls, floorplanUrls, address: value("address", 250), ownerNotes: value("ownerNotes", 2000), features: value("features", 1200).split("\n").map(x => x.trim()).filter(Boolean).slice(0, 25) } };
 }
 
 export async function savePropertyAction(form: FormData) {
   await requireAdmin();
   let property;
-  try { property = readProperty(form); } catch { redirect("/admin?error=fields"); }
+  try { property = await readProperty(form); } catch (err) {
+    console.error("Save property error:", err);
+    redirect("/admin?error=fields");
+  }
   const id = String(form.get("id") || "");
   if (id) {
-    if (!(await getProperty(id))) redirect("/admin?error=missing");
-    await updateProperty(id, property.details, property.status);
+    const existing = await getProperty(id);
+    if (!existing) redirect("/admin?error=missing");
+    try {
+      await updateProperty(id, property.details, property.status, existing.updatedAt, [...existing.imageUrls, ...existing.floorplanUrls]);
+    } catch (err) {
+      console.error("Update property error:", err);
+      redirect("/admin?error=conflict");
+    }
   } else await createProperty(property.details, property.status);
   redirect("/admin?updated=1");
 }
@@ -60,7 +102,13 @@ export async function changeStatusAction(form: FormData) {
 export async function deletePropertyAction(form: FormData) {
   await requireAdmin();
   const id = String(form.get("id") || "");
-  if (!(await getProperty(id))) redirect("/admin?error=missing");
-  await removeProperty(id);
+  const property = await getProperty(id);
+  if (!property) redirect("/admin?error=missing");
+  try {
+    await removeProperty(id, [...property.imageUrls, ...property.floorplanUrls], property.updatedAt);
+  } catch (err) {
+    console.error("Delete property error:", err);
+    redirect("/admin?error=conflict");
+  }
   redirect("/admin?removed=1");
 }

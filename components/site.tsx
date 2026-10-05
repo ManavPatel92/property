@@ -8,7 +8,7 @@ export function Logo() {
 }
 
 export function Header() {
-  return <header className="site-header"><div className="header-inner"><Logo /><nav className="desktop-nav" aria-label="Primary navigation">{nav.map(([label, href]) => <a href={href} key={href}>{label}</a>)}</nav><a className="header-cta" href="/contact">Contact <ArrowRight /></a><details className="mobile-menu"><summary aria-label="Open menu"><Menu /></summary><nav aria-label="Mobile navigation">{nav.map(([label, href]) => <a href={href} key={href}>{label}</a>)}</nav></details></div></header>;
+  return <header className="site-header"><div className="header-inner"><Logo /><nav className="desktop-nav" aria-label="Primary navigation">{nav.filter(([label]) => label !== "Contact").map(([label, href]) => <a href={href} key={href}>{label}</a>)}</nav><a className="header-cta" href="/contact">Contact <ArrowRight /></a><details className="mobile-menu"><summary aria-label="Open menu"><Menu /></summary><nav aria-label="Mobile navigation">{nav.map(([label, href]) => <a href={href} key={href}>{label}</a>)}</nav></details></div></header>;
 }
 
 export function Footer() {
