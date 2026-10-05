@@ -59,7 +59,8 @@
 .detail-meta { color:var(--navy); font-weight:700; }
 .detail-actions { display:grid; grid-template-columns:1fr 1fr; gap:.8rem; margin-top:1.5rem; }
 .detail-aside .button { display:inline-flex; justify-content:center; align-items:center; min-height:48px; margin-top:0; padding:.75rem 1rem; text-align:center; }
-.button-light { border:1px solid #76b9b2; background:#e8f7f5; color:#087c72; font-weight:700; }
+.button-light { border:0; background:var(--navy); color:#fff; font-weight:800; }
+.button-light:hover { background:var(--navy); border-color:transparent; color:#fff; }
 .detail-aside .save-property { width:calc(50% - .4rem); margin-top:1.2rem; border:0; border-radius:0; cursor:pointer; }
 .save-property:hover,.save-property.saved { background:var(--navy); color:#fff; }
 .save-property span:first-child { font-size:1.35rem; line-height:1; }
