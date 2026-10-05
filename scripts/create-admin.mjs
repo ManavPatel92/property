@@ -30,7 +30,7 @@ async function ask(label, hidden = false) {
 
 const username = (await ask("Admin username: ")).trim().toLowerCase();
 const password = await ask("Admin password (hidden): ", true);
-if (username.length < 4 || username.length > 150 || password.length < 14) throw new Error("Username needs 4–150 characters and password at least 14 characters.");
+if (username.length < 4 || username.length > 150 || password.length < 6) throw new Error("Username needs 4–150 characters and password at least 6 characters.");
 const existing = await readFile(path, "utf8").catch(() => "");
 const settings = new Map();
 for (const line of existing.split(/\r?\n/)) { const i = line.indexOf("="); if (i > 0 && !line.startsWith("#")) settings.set(line.slice(0, i).trim(), line.slice(i + 1)); }

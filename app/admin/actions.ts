@@ -20,6 +20,14 @@ export async function logoutAction() { await requireAdmin(); await endSession();
 
 async function readProperty(form: FormData): Promise<{ details: PropertyDetails; status: Status }> {
   const value = (name: string, limit = 300) => String(form.get(name) || "").trim().slice(0, limit);
+  const isValidImageUrl = (imageUrl: string) => /^https:\/\//i.test(imageUrl) && (() => {
+    try {
+      const url = new URL(imageUrl);
+      return !url.username && !url.password;
+    } catch {
+      return false;
+    }
+  })();
   const title = value("title", 150);
   const location = value("location", 150);
   const price = value("price", 80);
@@ -32,12 +40,33 @@ async function readProperty(form: FormData): Promise<{ details: PropertyDetails;
   const bathrooms = Number(value("bathrooms"));
   if (![bedrooms, bathrooms].every(n => Number.isInteger(n) && n >= 0 && n <= 50)) throw new Error("Invalid bedroom or bathroom count.");
   let imageUrl = value("imageUrl", 1000);
+  let imageUrls: string[] = [];
+  let floorplanUrls: string[] = [];
+  try {
+    const submittedImageUrls = JSON.parse(value("imageUrls", 20000));
+    if (Array.isArray(submittedImageUrls) && submittedImageUrls.every(url => typeof url === "string" && isValidImageUrl(url))) imageUrls = submittedImageUrls.slice(0, 20);
+  } catch {
+    throw new Error("Invalid property gallery.");
+  }
+  try {
+    const submittedFloorplans = JSON.parse(value("floorplanUrls", 20000));
+    if (Array.isArray(submittedFloorplans) && submittedFloorplans.every(url => typeof url === "string" && isValidImageUrl(url))) floorplanUrls = submittedFloorplans.slice(0, 10);
+  } catch {
+    throw new Error("Invalid floor plan gallery.");
+  }
   const imageFile = form.get("imageFile");
   if (imageFile && typeof imageFile === "object" && "size" in imageFile && (imageFile as File).size > 0) {
     imageUrl = await uploadPropertyImage(imageFile as File);
   }
-  if (imageUrl && (!/^https:\/\//i.test(imageUrl) || (() => { try { const url = new URL(imageUrl); return !["https:"].includes(url.protocol) || Boolean(url.username || url.password); } catch { return true; } })())) throw new Error("Use an HTTPS image URL.");
-  return { status, details: { title, location, price, description, kind, bedrooms, bathrooms, imageUrl, address: value("address", 250), ownerNotes: value("ownerNotes", 2000), features: value("features", 1200).split("\n").map(x => x.trim()).filter(Boolean).slice(0, 25) } };
+  const imageFiles = form.getAll("imageFiles").filter((file): file is File => file instanceof File && file.size > 0);
+  const floorplanFiles = form.getAll("floorplanFiles").filter((file): file is File => file instanceof File && file.size > 0);
+  if (new Set([imageUrl, ...imageUrls].filter(Boolean)).size + imageFiles.length > 20) throw new Error("A property can have up to 20 photos.");
+  if (floorplanUrls.length + floorplanFiles.length > 10) throw new Error("A property can have up to 10 floor plans.");
+  for (const file of imageFiles) imageUrls.push(await uploadPropertyImage(file));
+  for (const file of floorplanFiles) floorplanUrls.push(await uploadPropertyImage(file));
+  if (imageUrl && !isValidImageUrl(imageUrl)) throw new Error("Use an HTTPS image URL.");
+  imageUrls = Array.from(new Set([imageUrl, ...imageUrls].filter(Boolean))).slice(0, 20);
+  return { status, details: { title, location, price, description, kind, bedrooms, bathrooms, imageUrl: imageUrls[0] || "", imageUrls, floorplanUrls, address: value("address", 250), ownerNotes: value("ownerNotes", 2000), features: value("features", 1200).split("\n").map(x => x.trim()).filter(Boolean).slice(0, 25) } };
 }
 
 export async function savePropertyAction(form: FormData) {
@@ -52,7 +81,7 @@ export async function savePropertyAction(form: FormData) {
     const existing = await getProperty(id);
     if (!existing) redirect("/admin?error=missing");
     try {
-      await updateProperty(id, property.details, property.status, existing.updatedAt, existing.imageUrl);
+      await updateProperty(id, property.details, property.status, existing.updatedAt, [...existing.imageUrls, ...existing.floorplanUrls]);
     } catch (err) {
       console.error("Update property error:", err);
       redirect("/admin?error=conflict");
@@ -76,7 +105,7 @@ export async function deletePropertyAction(form: FormData) {
   const property = await getProperty(id);
   if (!property) redirect("/admin?error=missing");
   try {
-    await removeProperty(id, property.imageUrl, property.updatedAt);
+    await removeProperty(id, [...property.imageUrls, ...property.floorplanUrls], property.updatedAt);
   } catch (err) {
     console.error("Delete property error:", err);
     redirect("/admin?error=conflict");

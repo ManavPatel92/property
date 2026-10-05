@@ -22,7 +22,11 @@ export async function db<T>(table: "properties" | "admin_sessions" | "login_atte
   return (text ? JSON.parse(text) : []) as T;
 }
 
-function fromRow(row: Row): Property { return { ...decrypt<PropertyDetails>(row.payload), id: row.id, status: row.status, createdAt: row.created_at, updatedAt: row.updated_at }; }
+function fromRow(row: Row): Property {
+  const details = decrypt<PropertyDetails>(row.payload);
+  const imageUrls = Array.from(new Set([details.imageUrl, ...(details.imageUrls || [])].filter(Boolean)));
+  return { ...details, imageUrl: imageUrls[0] || "", imageUrls, floorplanUrls: details.floorplanUrls || [], id: row.id, status: row.status, createdAt: row.created_at, updatedAt: row.updated_at };
+}
 export async function listProperties(includeHidden = false) {
   const filter = includeHidden ? "" : "&status=not.in.(draft,off_market)";
   return (await db<Row[]>("properties", `select=id,status,payload,created_at,updated_at&order=created_at.desc${filter}`)).map(fromRow);
@@ -35,21 +39,25 @@ export async function getProperty(id: string) {
 export async function createProperty(details: PropertyDetails, status: Status) {
   await db("properties", "", { method: "POST", body: { status, payload: encrypt(details) } });
 }
-export async function updateProperty(id: string, details: PropertyDetails, status: Status, expectedUpdatedAt: string, previousImageUrl = "") {
+export async function updateProperty(id: string, details: PropertyDetails, status: Status, expectedUpdatedAt: string, previousImageUrls: string[] = []) {
   const updated = await db<Row[]>("properties", `id=eq.${encodeURIComponent(id)}&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}`, { method: "PATCH", body: { status, payload: encrypt(details), updated_at: new Date().toISOString() }, returnRows: true });
   if (!updated.length) {
-    if (details.imageUrl && details.imageUrl !== previousImageUrl) await removeStorageObject(details.imageUrl);
+    for (const imageUrl of details.imageUrls) {
+      if (!previousImageUrls.includes(imageUrl)) await removeStorageObject(imageUrl);
+    }
     throw new Error("Property was changed by another admin.");
   }
-  if (previousImageUrl && previousImageUrl !== details.imageUrl) await removeStorageObject(previousImageUrl);
+  for (const imageUrl of previousImageUrls) {
+    if (!details.imageUrls.includes(imageUrl)) await removeStorageObject(imageUrl);
+  }
 }
 export async function updateStatus(id: string, status: Status) {
   await db("properties", `id=eq.${encodeURIComponent(id)}`, { method: "PATCH", body: { status, updated_at: new Date().toISOString() } });
 }
-export async function removeProperty(id: string, imageUrl = "", expectedUpdatedAt: string) {
+export async function removeProperty(id: string, imageUrls: string[] = [], expectedUpdatedAt: string) {
   const updated = await db<Row[]>("properties", `id=eq.${encodeURIComponent(id)}&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}`, { method: "DELETE", returnRows: true });
   if (!updated.length) throw new Error("Property was changed by another admin.");
-  if (imageUrl) await removeStorageObject(imageUrl);
+  for (const imageUrl of imageUrls) await removeStorageObject(imageUrl);
 }
 
 let bucketChecked = false;

@@ -21,6 +21,8 @@ export type PropertyDetails = {
   bathrooms: number;
   description: string;
   imageUrl: string;
+  imageUrls: string[];
+  floorplanUrls: string[];
   features: string[];
   ownerNotes: string;
 };

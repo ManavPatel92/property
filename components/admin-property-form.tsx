@@ -9,6 +9,8 @@ const MAX_IMAGE_SIZE = 4 * 1024 * 1024;
 export function AdminPropertyForm({ property }: { property?: Property }) {
   const [preview, setPreview] = useState<string | null>(property?.imageUrl || null);
   const [currentUrl, setCurrentUrl] = useState<string>(property?.imageUrl || "");
+  const [additionalPreviews, setAdditionalPreviews] = useState<string[]>(property?.imageUrls.slice(1) || []);
+  const [floorplanPreviews, setFloorplanPreviews] = useState<string[]>(property?.floorplanUrls || []);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewObjectUrlRef = useRef<string | null>(null);
@@ -123,7 +125,7 @@ export function AdminPropertyForm({ property }: { property?: Property }) {
 
       <div style={{ border: "1px dashed var(--line)", padding: "1.25rem", background: "#fbfaf7", borderRadius: "2px", display: "grid", gap: "0.5rem" }}>
         <label style={{ display: "grid", gap: "0.45rem", fontWeight: 700, color: "var(--navy)" }}>
-          Property cover photo
+          Property cover photo (upload from your device)
           <input
             type="file"
             name="imageFile"
@@ -157,6 +159,7 @@ export function AdminPropertyForm({ property }: { property?: Property }) {
 
         {/* Retains current image URL if no new file is uploaded */}
         <input type="hidden" name="imageUrl" value={currentUrl} />
+        <input type="hidden" name="imageUrls" value={JSON.stringify(property?.imageUrls || [])} />
 
         <details style={{ marginTop: "0.6rem", fontSize: "0.82rem", color: "var(--muted)" }}>
           <summary style={{ cursor: "pointer" }}>Or paste an image web link</summary>
@@ -174,6 +177,57 @@ export function AdminPropertyForm({ property }: { property?: Property }) {
           />
         </details>
       </div>
+
+      <label>
+        Additional property photos (upload from your device)
+        <input
+          type="file"
+          name="imageFiles"
+          accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+          multiple
+          onChange={(e) => {
+            setFileError(null);
+            const files = Array.from(e.target.files || []);
+            const invalid = files.find(file => file.size > MAX_IMAGE_SIZE || !["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"].includes(file.type));
+            if (invalid) {
+              setFileError("Each photo must be a JPG, PNG, WEBP, AVIF, or GIF image under 4MB.");
+              e.target.value = "";
+              return;
+            }
+            setAdditionalPreviews(files.map(file => URL.createObjectURL(file)));
+          }}
+        />
+        <span style={{ fontSize: "0.82rem", color: "var(--muted)" }}>Choose multiple photos from your computer or phone to show in the property details gallery. They upload when you save the property.</span>
+      </label>
+      {additionalPreviews.length > 0 && (
+        <div className="photo-preview-grid">
+          {additionalPreviews.map((photo, index) => <img key={`${photo}-${index}`} src={photo} alt={`Additional listing preview ${index + 1}`} />)}
+        </div>
+      )}
+
+      <label>
+        Floor plans (upload from your device)
+        <input
+          type="file"
+          name="floorplanFiles"
+          accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+          multiple
+          onChange={(e) => {
+            setFileError(null);
+            const files = Array.from(e.target.files || []);
+            const invalid = files.find(file => file.size > MAX_IMAGE_SIZE || !["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"].includes(file.type));
+            if (invalid) {
+              setFileError("Each floor plan must be an image under 4MB.");
+              e.target.value = "";
+              return;
+            }
+            setFloorplanPreviews(files.map(file => URL.createObjectURL(file)));
+          }}
+        />
+        <span style={{ fontSize: "0.82rem", color: "var(--muted)" }}>Upload floor-plan images separately so visitors can open them from the Floorplan tab.</span>
+      </label>
+      <input type="hidden" name="floorplanUrls" value={JSON.stringify(property?.floorplanUrls || [])} />
+      {floorplanPreviews.length > 0 && <div className="photo-preview-grid">{floorplanPreviews.map((photo, index) => <img key={`${photo}-${index}`} src={photo} alt={`Floor plan preview ${index + 1}`} />)}</div>}
 
       <label>
         Private owner or staff notes / comments

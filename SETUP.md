@@ -70,7 +70,7 @@ npm run create-admin
 Enter:
 
 - An admin username between 4 and 150 characters.
-- An admin password with at least 14 characters.
+- An admin password with at least 6 characters.
 
 The command writes the hashed login and encryption keys to `.env.local`. Never commit `.env.local` or share the plain password.
 
@@ -111,8 +111,8 @@ Check the following:
 2. Submit a test message.
 3. Confirm it arrives at `CONTACT_EMAIL`.
 4. Open `/admin/login`.
-5. Create a draft property with a small JPG, PNG, WEBP, AVIF, or GIF image.
-6. Edit the property and confirm the image preview and save flow.
+5. Create a draft property with a small JPG, PNG, WEBP, AVIF, or GIF cover image uploaded from your computer or phone.
+6. Add multiple additional photos, save the property, and confirm they appear in the public property details gallery.
 7. Publish the property and check `/properties`.
 
 Image uploads are limited to 4MB and are validated on the server.
@@ -171,7 +171,7 @@ Follow the DNS records shown by Vercel. The domain owner must make the DNS chang
 - Never expose `SUPABASE_SECRET_KEY` in client code.
 - Never expose SMTP credentials in the browser.
 - Keep `DATA_ENCRYPTION_KEY` backed up securely.
-- Use a strong admin password of at least 14 characters.
+- Use a strong admin password of at least 6 characters.
 - Restrict access to `/admin/login` credentials.
 - Keep the Supabase service key and SMTP password in Vercel server environment variables only.
 
