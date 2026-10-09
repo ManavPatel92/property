@@ -1,13 +1,9 @@
 export const nav = [
   ["Home", "/"],
-  ["Lettings", "/lettings"],
   ["Sales", "/sales"],
-  ["Properties", "/properties"],
-  ["Property Management", "/property-management"],
+  ["Lettings", "/lettings"],
   ["International", "/international"],
-  ["Partners", "/partners"],
-  ["About", "/about"],
-  ["Contact", "/contact"],
+  ["About Us", "/about"],
 ] as const;
 
 export const phoneDisplay = "07535 317777";
@@ -17,6 +13,5 @@ export const partners = [
   { short: "PRS", name: "Property Redress Scheme", logo: "/partner-prs.png" },
   { short: "ICO", name: "Information Commissioner's Office", logo: "/partner-ico.png" },
   { short: "HomeLet", name: "HomeLet", logo: "/partner-homelet.png" },
-  { short: "DPS", name: "Deposit Protection Service", logo: "/partner-dps.png" },
-  { short: "NRLA", name: "National Residential Landlords Association", logo: "/partner-nrla.png" },
+  { short: "MyDeposits", name: "MyDeposits", logo: "/partner-mydeposits.svg" },
 ] as const;
