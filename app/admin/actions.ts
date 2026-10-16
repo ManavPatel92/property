@@ -87,7 +87,10 @@ export async function savePropertyAction(form: FormData) {
       redirect("/admin?error=conflict");
     }
   } else await createProperty(property.details, property.status);
-  redirect("/admin?updated=1");
+  if (property.status === "draft" || property.status === "off_market") {
+    redirect("/admin?updated=1");
+  }
+  redirect(property.details.kind === "letting" ? "/lettings#properties" : "/sales#properties");
 }
 
 export async function changeStatusAction(form: FormData) {
