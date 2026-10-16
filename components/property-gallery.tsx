@@ -41,8 +41,8 @@ export function PropertyGallery({ title, images, floorplans, location }: { title
         </div>
       ) : image ? (
         <div className="gallery-main">
-          <img src={image} alt={`${title} ${tab === "floorplan" ? "floor plan" : `photo ${current + 1}`}`} referrerPolicy="no-referrer" />
-          <button className="gallery-expand" type="button" onClick={() => setIsExpanded(true)} aria-label={`View ${tab === "floorplan" ? "floor plan" : "photo"} full size`}>
+          <img src={image} alt={`${title} ${tab === "floorplan" ? "floor plan" : `photo ${current + 1}`}`} referrerPolicy="no-referrer" style={{ objectFit: "contain", background: "#f5f5f2" }} />
+          <button className="gallery-expand" type="button" onClick={() => setIsExpanded(true)} aria-label={`View ${tab === "floorplan" ? "floor plan" : "photo"} full size`} style={{ position: "absolute", right: "1rem", top: "1rem", zIndex: 2, padding: ".65rem .9rem", border: "1px solid #ffffff99", borderRadius: "2px", background: "#0c2630dc", color: "#fff", fontSize: ".8rem", fontWeight: 700, cursor: "pointer" }}>
             View larger
           </button>
           {activeImages.length > 1 && (
@@ -68,13 +68,13 @@ export function PropertyGallery({ title, images, floorplans, location }: { title
       </nav>
 
       {isExpanded && image && (
-        <div className="gallery-lightbox" role="dialog" aria-modal="true" aria-label={`${title} image viewer`} onClick={() => setIsExpanded(false)}>
-          <button className="lightbox-close" type="button" onClick={() => setIsExpanded(false)} aria-label="Close full-size image">Close ×</button>
-          <img src={image} alt={`${title} ${tab === "floorplan" ? "floor plan" : `photo ${current + 1}`} full size`} referrerPolicy="no-referrer" onClick={(event) => event.stopPropagation()} />
+        <div className="gallery-lightbox" role="dialog" aria-modal="true" aria-label={`${title} image viewer`} onClick={() => setIsExpanded(false)} style={{ position: "fixed", inset: 0, zIndex: 1000, display: "grid", placeItems: "center", padding: "4rem clamp(1rem,4vw,4rem)", background: "#07171eef" }}>
+          <button className="lightbox-close" type="button" onClick={() => setIsExpanded(false)} aria-label="Close full-size image" style={{ position: "fixed", right: "1.25rem", top: "1.25rem", zIndex: 2, padding: ".7rem 1rem", border: "1px solid #ffffff80", background: "#fff", color: "#0c2630", fontWeight: 800, cursor: "pointer" }}>Close ×</button>
+          <img src={image} alt={`${title} ${tab === "floorplan" ? "floor plan" : `photo ${current + 1}`} full size`} referrerPolicy="no-referrer" onClick={(event) => event.stopPropagation()} style={{ display: "block", width: "auto", height: "auto", maxWidth: "100%", maxHeight: "calc(100vh - 8rem)", objectFit: "contain", boxShadow: "0 18px 60px #0009" }} />
           {activeImages.length > 1 && (
             <>
-              <button className="lightbox-arrow lightbox-arrow-left" type="button" aria-label="Previous image" onClick={(event) => { event.stopPropagation(); setCurrent((current - 1 + activeImages.length) % activeImages.length); }}>‹</button>
-              <button className="lightbox-arrow lightbox-arrow-right" type="button" aria-label="Next image" onClick={(event) => { event.stopPropagation(); setCurrent((current + 1) % activeImages.length); }}>›</button>
+              <button className="lightbox-arrow lightbox-arrow-left" type="button" aria-label="Previous image" onClick={(event) => { event.stopPropagation(); setCurrent((current - 1 + activeImages.length) % activeImages.length); }} style={{ position: "fixed", left: "1rem", top: "50%", zIndex: 2, width: "3.2rem", height: "4.5rem", transform: "translateY(-50%)", border: 0, background: "#ffffffdf", color: "#0c2630", fontSize: "2.5rem", cursor: "pointer" }}>‹</button>
+              <button className="lightbox-arrow lightbox-arrow-right" type="button" aria-label="Next image" onClick={(event) => { event.stopPropagation(); setCurrent((current + 1) % activeImages.length); }} style={{ position: "fixed", right: "1rem", top: "50%", zIndex: 2, width: "3.2rem", height: "4.5rem", transform: "translateY(-50%)", border: 0, background: "#ffffffdf", color: "#0c2630", fontSize: "2.5rem", cursor: "pointer" }}>›</button>
             </>
           )}
         </div>
