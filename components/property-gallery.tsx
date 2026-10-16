@@ -41,7 +41,7 @@ export function PropertyGallery({ title, images, floorplans, location }: { title
         </div>
       ) : image ? (
         <div className="gallery-main">
-          <img src={image} alt={`${title} ${tab === "floorplan" ? "floor plan" : `photo ${current + 1}`}`} referrerPolicy="no-referrer" style={{ objectFit: "contain", background: "#f5f5f2" }} />
+          <img src={image} alt={`${title} ${tab === "floorplan" ? "floor plan" : `photo ${current + 1}`}`} referrerPolicy="no-referrer" style={{ width: "100%", height: "100%", minWidth: 0, minHeight: 0, maxWidth: "100%", maxHeight: "100%", display: "block", objectFit: "contain", background: "#f5f5f2" }} />
           <button className="gallery-expand" type="button" onClick={() => setIsExpanded(true)} aria-label={`View ${tab === "floorplan" ? "floor plan" : "photo"} full size`} style={{ position: "absolute", right: "1rem", top: "1rem", zIndex: 2, padding: ".65rem .9rem", border: "1px solid #ffffff99", borderRadius: "2px", background: "#0c2630dc", color: "#fff", fontSize: ".8rem", fontWeight: 700, cursor: "pointer" }}>
             View larger
           </button>
