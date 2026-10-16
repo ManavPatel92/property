@@ -3,6 +3,7 @@ import { ArrowRight, KeyRound, ShieldCheck, Users } from "lucide-react";
 import { ContactBand, PageHero, PageShell, SectionHeading } from "@/components/site";
 import { PropertyListings } from "@/components/property-listings";
 
+export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Lettings" };
 
 export default async function LettingsPage() {
