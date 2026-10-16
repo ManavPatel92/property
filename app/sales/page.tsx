@@ -3,6 +3,7 @@ import { ArrowRight, Camera, ChartNoAxesCombined, Handshake, Megaphone } from "l
 import { ContactBand, PageHero, PageShell, SectionHeading } from "@/components/site";
 import { PropertyListings } from "@/components/property-listings";
 
+export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Sales" };
 
 export default async function SalesPage() {
